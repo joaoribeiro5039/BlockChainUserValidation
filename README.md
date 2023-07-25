@@ -1,8 +1,6 @@
-# FastAPI User Validation Documentation
+# FastAPI Blockchain-based User Validation Documentation
 
-## Introduction
-
-This documentation provides details about the FastAPI application designed for user validation between zones based on their Authorization Level. The application utilizes blockchain technology to validate and securely store user data. FastAPI is a modern, fast, web framework for building APIs with Python.
+This documentation provides details about the FastAPI application for blockchain-based user validation. The application uses a blockchain to store user validation data securely and exposes APIs to interact with the blockchain.
 
 ## Prerequisites
 
@@ -10,7 +8,7 @@ This documentation provides details about the FastAPI application designed for u
 - FastAPI
 - Pydantic
 - Web3.py (Python library for interacting with Ethereum blockchain)
-- Solidity (for smart contract development on the blockchain)
+- Redis (a fast in-memory data structure store used as a database)
 
 ## Setup
 
@@ -34,51 +32,42 @@ pip install pydantic
 pip install web3
 ```
 
-5. Setup Blockchain: Deploy the required smart contract on the blockchain to store user data securely.
+5. Install Redis: Install Redis server or use a cloud service for Redis.
 
 ## Application Overview
 
-The FastAPI application will expose endpoints to validate users based on their Authorization Level for accessing specific zones. The data related to user validation will be stored on the blockchain, ensuring tamper-resistant and transparent validation.
+The FastAPI application provides a blockchain-based user validation system. Users can be validated and added to the blockchain, and the blockchain will store the user validation data securely. Additionally, the application supports forging new blocks for user validation through API requests.
 
 ### Data Model
 
-We will use Pydantic models to define the data structure for the user validation.
+The data model for user validation is represented by the `Block` class. Each block contains user validation information.
 
 ```python
-from pydantic import BaseModel
+class Block:
+    def __init__(self, index, timestamp, data, previous_hash, nonce=0, hash=None):
+        self.index = index
+        self.timestamp = timestamp
+        self.data = data
+        self.previous_hash = previous_hash
+        self.nonce = 0
+        self.hash = self.calculate_hash() if hash is None else hash
 
-class UserValidation(BaseModel):
-    user_id: str
-    authorization_level: int
-    zone: str
+    def calculate_hash(self):
+        data_str = f"{self.index}{self.timestamp}{self.data}{self.previous_hash}{self.nonce}"
+        return hashlib.sha256(data_str.encode('utf-8')).hexdigest()
+
+    def is_valid(self, difficulty):
+        target = "0" * difficulty
+        return self.hash[:difficulty] == target
 ```
 
 ### Endpoints
 
-The FastAPI application will expose the following endpoints:
+The FastAPI application exposes the following endpoints:
 
-1. **Validate User** - To validate the user's authorization level for accessing a specific zone.
+1. **Forge New Block** - Forges a new block for user validation and stores it on the blockchain.
 
-   **Endpoint:** `/validate_user`
-
-   **HTTP Method:** POST
-
-   **Request Body:**
-
-   ```json
-   {
-       "user_id": "user123",
-       "zone": "zoneA"
-   }
-   ```
-
-   **Response:**
-
-   - `200 OK` with the response body containing the validation status (e.g., `{"valid": true}` or `{"valid": false}`).
-
-2. **Add User Validation Data** - To add user validation data to the blockchain.
-
-   **Endpoint:** `/add_user_validation`
+   **Endpoint:** `/forge`
 
    **HTTP Method:** POST
 
@@ -86,33 +75,39 @@ The FastAPI application will expose the following endpoints:
 
    ```json
    {
-       "user_id": "user123",
-       "authorization_level": 2,
-       "zone": "zoneA"
+       "person_id": "user123",
+       "authorization_id": "auth456",
+       "zone_id_orig": "zoneA",
+       "zone_id_dest": "zoneB"
    }
    ```
 
    **Response:**
 
-   - `200 OK` with the response body confirming the successful addition of data.
+   - `200 OK` with the response body containing a success message.
+
+2. **Get Blocks** - Retrieves all the blocks in the blockchain.
+
+   **Endpoint:** `/blocks`
+
+   **HTTP Method:** GET
+
+   **Response:**
+
+   - `200 OK` with the response body containing the list of blocks in the blockchain.
 
 ## Blockchain Interaction
 
-The application will interact with the blockchain to store and retrieve user validation data. A smart contract will be deployed on the blockchain to manage this data securely.
-
-The smart contract should include functions to:
-
-- Add user validation data.
-- Retrieve user validation data by user ID and zone.
+The application uses Redis to store the blockchain data. The `Blockchain` class manages the blockchain and provides functions for adding blocks and validating the chain.
 
 ## Usage
 
-1. Ensure that the blockchain is set up, and the smart contract is deployed.
+1. Ensure Redis server is running or use a cloud Redis service.
 
 2. Run the FastAPI application.
 
 ```bash
-uvicorn app:app --host 0.0.0.0 --port 8000
+uvicorn app:app --host 127.0.0.1 --port 8000
 ```
 
 3. The FastAPI application will now be running on `http://localhost:8000`.
@@ -121,14 +116,12 @@ uvicorn app:app --host 0.0.0.0 --port 8000
 
 ## Security Considerations
 
-1. Ensure that the blockchain network is secure and properly configured.
+1. Ensure that the Redis server is secure and properly configured.
 
 2. Implement authentication and authorization mechanisms to protect sensitive endpoints and operations.
 
 3. Use HTTPS to secure communication with the API.
 
-4. Apply rate limiting and throttling to prevent abuse.
-
 ## Conclusion
 
-This documentation provides an overview of the FastAPI application for user validation between zones based on Authorization Level. By utilizing blockchain technology, the application ensures data integrity and transparency, making it suitable for various use cases that require secure and tamper-resistant validation. Ensure to follow the security considerations to maintain the robustness of the application.
+This documentation provides an overview of the FastAPI application for blockchain-based user validation. By utilizing blockchain technology, the application ensures data integrity and transparency, making it suitable for various use cases that require secure and tamper-resistant validation. Ensure to follow the security considerations to maintain the robustness of the application.
