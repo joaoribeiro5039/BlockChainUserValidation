@@ -1,6 +1,5 @@
 version: '3'
 services:
-
   redis:
     container_name: redis
     image: redis:latest
@@ -8,6 +7,33 @@ services:
       - 6379:6379
     volumes:
       - redis_data:/data
+    restart: always
+
+    
+  api:
+    container_name: api
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - 8000:8000
+    restart: always
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+      
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+    deploy:
+      replicas: 1
 
 volumes:
   redis_data:

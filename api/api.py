@@ -5,8 +5,14 @@ import redis
 from fastapi import FastAPI
 from pydantic import BaseModel
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import random
+import os
+
+global REDIS_Host
+REDIS_Host = os.getenv("REDIS_HOST")
+if REDIS_Host is None:
+    REDIS_Host = "localhost"
 
 
 class Block:
@@ -30,7 +36,7 @@ class Block:
 class Blockchain:
     def __init__(self):
         self.chain = [self.create_genesis_block()]
-        self.difficulty = 2  # Adjust this to control the mining difficulty
+        self.difficulty = 0  # Adjust this to control the mining difficulty
 
     def create_genesis_block(self):
         return Block(0, datetime.now(), {"Person_ID": "", "Authorization_ID": "", "Zone_ID": ""}, "0", 0, "0")
@@ -82,61 +88,20 @@ class BlockEncoder(json.JSONEncoder):
 app = FastAPI()
 
 # Initialize Redis client
-redis_client = redis.StrictRedis(host='localhost', port=6379, decode_responses=True)
-
-User_List= []
-for i in range(100):
-    obj ={
-        "User_ID": str(i),
-        "Authorization_ID": str(random.randint(1, 10))
-        }
-    User_List.append(obj)
-redis_client.set("User_List", json.dumps(User_List))
-
-for user in User_List:
-    blockchain_data = redis_client.get("blockchain")
-    if blockchain_data:
-        blockchain_chain = json.loads(blockchain_data)
-        blockchain = Blockchain()
-        blockchain.chain = [Block(**block_data) for block_data in blockchain_chain]
-    else:
-        blockchain = Blockchain()
-
-    current_validator = Validator()
-    current_validator.validate_User(blockchain, user["User_ID"], user["Authorization_ID"], "0","0")
-
-    # Save the updated blockchain to Redis
-    redis_client.set("blockchain", json.dumps(blockchain.chain, cls=BlockEncoder))
-
-
-Zones= []
-for i in range(10):
-    obj ={
-        "Zone_ID": str(i),
-        "Wait_Time": str(random.randint(3, 4))
-        }
-    Zones.append(obj)
-
-redis_client.set("Zones", json.dumps(Zones))
-
-for zones in Zones:
-    blockchain_data = redis_client.get("blockchain")
-    if blockchain_data:
-        blockchain_chain = json.loads(blockchain_data)
-        blockchain = Blockchain()
-        blockchain.chain = [Block(**block_data) for block_data in blockchain_chain]
-    else:
-        blockchain = Blockchain()
-
-    current_validator = Validator()
-    current_validator.validate_Zones(blockchain, zones["Zone_ID"], zones["Wait_Time"])
-
-    # Save the updated blockchain to Redis
-    redis_client.set("blockchain", json.dumps(blockchain.chain, cls=BlockEncoder))
-
+redis_client = redis.StrictRedis(host=REDIS_Host, port=6379, decode_responses=True)
 
 @app.post("/forge")
 async def forge_new_block(person_id, authorization_id, zone_id_orig,zone_id_dest):
+    current_time = str(datetime.now())
+    datetime_current_time = datetime.strptime(current_time, "%Y-%m-%d %H:%M:%S.%f")
+    time_difference = datetime_current_time - datetime_current_time
+    # Create a timedelta object representing 1 second
+    one_second = timedelta(seconds=1)
+    while time_difference < one_second:
+        last_update = redis_client.get("update")
+        datetime_last_update = datetime.strptime(last_update, "%Y-%m-%d %H:%M:%S.%f")
+        time_difference = datetime_last_update - datetime_current_time
+    
     blockchain_data = redis_client.get("blockchain")
     if blockchain_data:
         blockchain_chain = json.loads(blockchain_data)
@@ -169,4 +134,4 @@ async def get_blocks():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
