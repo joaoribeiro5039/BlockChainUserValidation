@@ -1,104 +1,77 @@
-# Blockchain Program with Redis Backend
+# Worker Documentation
 
-This Python program implements a simple blockchain using Redis as the backend data store. The blockchain consists of blocks, each containing various types of data. The program allows you to create and manage blocks related to users and zones.
+This documentation outlines the functionality and configuration of the `worker.py` script, which runs in a Docker container as a worker service. The script implements a simple blockchain system using Redis as the data store. It consists of creating and managing blocks, and it periodically updates the blockchain data based on the specified refresh rate.
 
-## Requirements
+## Prerequisites
 
-To run this program, you need the following:
-
-1. Python 3.x
-2. Redis server (either installed locally or accessible through a network connection)
-
-## Dependencies
-
-This program uses the following Python libraries:
-
-- hashlib: Used for cryptographic hashing of block data.
-- redis: Python client for Redis, used to interact with the Redis server.
-- pydantic: Used for data validation and serialization.
-- json: For JSON serialization and deserialization.
-- datetime: For timestamping block creation.
-- random: To generate random data for users and zones.
-- os: To fetch environment variables.
-
-You can install the required dependencies using `pip` with the following command:
-
-```
-pip install hashlib redis pydantic
-```
+- Docker: Make sure you have Docker installed on your machine.
 
 ## Configuration
 
-Before running the program, ensure that the Redis server is running and accessible. You can set the Redis host address by providing the `REDIS_HOST` environment variable. If the `REDIS_HOST` environment variable is not set, the default value will be `"localhost"`. Make sure the Redis server has appropriate settings, including password protection if required.
+The `worker.py` script can be configured using environment variables provided in the Docker Compose file (`docker-compose.yml`). The following environment variables can be set:
+
+1. **REDIS_HOST**: The hostname or IP address of the Redis server. If not provided, the default value will be "localhost".
+
+2. **REFRESH_RATE**: The refresh rate (in seconds) at which the blockchain data is updated. If not provided, the default value will be 1.0 seconds.
+
+## Docker Compose Configuration
+
+To run the `worker.py` script as a Docker service, you can use the provided `docker-compose.yml` file. This file defines the service configuration, build options, environment variables, and scaling settings.
+
+```yaml
+version: "3"
+
+services:
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - REDIS_HOST=redis
+      - REFRESH_RATE=1.0
+    depends_on:
+      - redis
+    deploy:
+      replicas: 2
+```
+
+The Docker Compose configuration sets up the following:
+
+1. `worker` Service: This service runs the `worker.py` script in a Docker container.
+
+2. `build`: Specifies the build context for the Dockerfile.
+
+3. `restart: always`: Ensures that the worker service restarts automatically if it crashes or stops.
+
+4. `environment`: Sets the environment variables for the worker service, such as `REDIS_HOST` and `REFRESH_RATE`.
+
+5. `depends_on`: Declares a dependency on the `redis` service, ensuring that the Redis server is started before the worker service.
+
+6. `deploy: replicas`: Specifies the number of replicas (instances) of the worker service. In this case, two replicas will be created.
 
 ## Usage
 
-1. Import the necessary libraries:
+1. Ensure that you have Docker installed and the Docker daemon is running.
 
-```python
-import hashlib
-import redis
-from pydantic import BaseModel
-import json
-from datetime import datetime
-import random
-import os
-```
+2. Place the `worker.py` script in the `./worker` directory along with the `Dockerfile` (for building the image).
 
-2. Define the Redis host address using environment variables:
+3. Create a Redis service or container accessible through the `REDIS_HOST` environment variable. You can use the default Redis settings or customize them as needed.
 
-```python
-global REDIS_Host
-REDIS_Host = os.getenv("REDIS_HOST")
-if REDIS_Host is None:
-    REDIS_Host = "localhost"
-```
+4. Create the Docker Compose file (`docker-compose.yml`) with the provided configuration.
 
-3. Implement the Block class:
+5. Navigate to the directory containing the `docker-compose.yml` file in your terminal or command prompt.
 
-```python
-class Block:
-    # ... (See the provided code for the complete Block class implementation)
-```
-
-4. Define functions to create different types of blocks:
-
-```python
-def Create_Genesis_Block():
-    # ...
-
-def Create_User_Block(index, user_ID, authorizationlevel_id, prev_hash):
-    # ...
-
-def Create_Zone_Block(index, Zone_ID, RequiredLevel_ID, prev_hash):
-    # ...
-
-def Create_Move_Block(index, user_ID, from_id, to_id, prev_hash):
-    # ...
-```
-
-5. Initialize the Redis client:
-
-```python
-redis_client = redis.StrictRedis(host=REDIS_Host, port=6379, decode_responses=True)
-```
-
-6. Implement block creation and chain management:
-
-```python
-# ...
-while True:
-    # ...
-```
-
-7. Run the program:
+6. Run the following command to start the worker service:
 
 ```bash
-python your_program_name.py
+docker-compose up -d
 ```
 
-## Important Note
+7. The `worker.py` script will run in the Docker container as a worker service, creating and managing the blockchain using Redis as the data store. The blockchain data will be periodically updated based on the specified `REFRESH_RATE`.
 
-This program is a basic demonstration of a blockchain using Redis as a backend. In a real-world scenario, you may need to implement more sophisticated features, security measures, and consensus algorithms for a robust and secure blockchain implementation.
+## Notes
 
-Feel free to modify and extend the program as needed for your specific use case.
+- Ensure that you have the necessary permissions and firewall settings to run Docker containers on your machine.
+
+- The provided script and Docker configuration serve as an illustrative example of a simple blockchain implementation using Redis. In a real-world scenario, you may need to consider additional security measures, scalability, and other factors for a robust and production-ready blockchain system.

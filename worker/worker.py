@@ -5,11 +5,19 @@ import json
 from datetime import datetime
 import random
 import os
+import time
 
 global REDIS_Host
 REDIS_Host = os.getenv("REDIS_HOST")
 if REDIS_Host is None:
     REDIS_Host = "localhost"
+
+global REFRESH_Rate
+REFRESH_Rate_env = os.getenv("REFRESH_RATE")
+if REFRESH_Rate_env is None:
+    REFRESH_Rate = 1.0
+else:
+    REFRESH_Rate = float(REFRESH_Rate_env)
 
 
 def clear_redis_data(host, port, password=None, db=0):
@@ -94,15 +102,15 @@ if latest_Data is None:
     }
 
     User_List= []
-    for i in range(10000):
+    for i in range(100):
         obj ={
             "User_ID": str(i),
-            "AuthorizationLevel_ID": str(random.randint(1, 10))
+            "AuthorizationLevel_ID": [random.randint(1, 10) for _ in range(3)]
             }
         User_List.append(obj)
 
     for user in User_List:
-        current_block = Create_User_Block(Blockchain_Data["BlockChain_Size"], user["User_ID"], user["AuthorizationLevel_ID"],Blockchain_Data["BlockChain_LastHash"])
+        current_block = Create_User_Block(Blockchain_Data["BlockChain_Size"], user["User_ID"], json.dumps(user["AuthorizationLevel_ID"]),Blockchain_Data["BlockChain_LastHash"])
         Blockchain_Data["BlockChain_Size"] += 1
         Blockchain_Data["datetime"] = str(datetime.now())
         Blockchain_Data["BlockChain_LastHash"] = current_block.hash
@@ -119,10 +127,10 @@ if latest_Data is None:
 
 
     Zones= []
-    for i in range(10000):
+    for i in range(10):
         obj ={
-            "Zone_ID": str(i),
-            "Required_Level_ID": str(random.randint(2, 4))
+            "Zone_ID": i,
+            "Required_Level_ID": random.randint(2, 4)
             }
         Zones.append(obj)
 
@@ -135,10 +143,7 @@ if latest_Data is None:
         redis_client.set("update",json.dumps(Blockchain_Data))
 
 
-
-
 while True:
-
     Current_User_List = []
     Current_UserLocation_State = []
 
@@ -150,17 +155,30 @@ while True:
     Current_hash = last_hash
     counter = 0
     for i in range(size, -1, -1):
-        print(i)
+        # print(i)
         if i == 0:
-            if size == counter:
+            datetime_last_update = datetime.strptime(str(datetime.now()), "%Y-%m-%d %H:%M:%S.%f")
+            datetime_current_update = datetime.strptime(str(datetime.now()), "%Y-%m-%d %H:%M:%S.%f")
+            time_difference = datetime_current_update - datetime_last_update
+            update_in_Seconds = (time_difference).total_seconds()
+            while update_in_Seconds < REFRESH_Rate:
                 new_blockchain_data = json.loads(redis_client.get("update"))
-                if new_blockchain_data["BlockChain_LastHash"] == blockchain_data["BlockChain_LastHash"]:
-                    new_blockchain_data["last_update"] = new_blockchain_data["datetime"]
-                    new_blockchain_data["datetime"] = str(datetime.now())
-                    redis_client.set("Current_User_List",json.dumps(Current_User_List))
-                    redis_client.set("Current_Zone_List",json.dumps(Current_Zone_List))
-                    redis_client.set("Current_UserLocation_State",json.dumps(Current_UserLocation_State))
-                    redis_client.set("update",json.dumps(new_blockchain_data))
+                datetime_current_update = datetime.strptime(str(datetime.now()), "%Y-%m-%d %H:%M:%S.%f")
+                datetime_last_update = datetime.strptime(new_blockchain_data["datetime"], "%Y-%m-%d %H:%M:%S.%f")
+                time_difference = datetime_current_update - datetime_last_update
+                update_in_Seconds = (time_difference).total_seconds()
+                if update_in_Seconds < REFRESH_Rate:
+                    time.sleep((REFRESH_Rate-update_in_Seconds)*random.uniform(0.75, 1.0))
+
+            if new_blockchain_data["BlockChain_LastHash"] == blockchain_data["BlockChain_LastHash"]:
+                new_blockchain_data["last_update"] = new_blockchain_data["datetime"]
+                new_blockchain_data["datetime"] = str(datetime.now())
+                redis_client.set("Current_User_List",json.dumps(Current_User_List))
+                redis_client.set("Current_Zone_List",json.dumps(Current_Zone_List))
+                redis_client.set("Current_UserLocation_State",json.dumps(Current_UserLocation_State))
+                redis_client.set("update",json.dumps(new_blockchain_data))
+                    
+
             break
 
         else:

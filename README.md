@@ -1,127 +1,101 @@
-# FastAPI Blockchain-based User Validation Documentation
+# Blockchain Project Documentation
 
-This documentation provides details about the FastAPI application for blockchain-based user validation. The application uses a blockchain to store user validation data securely and exposes APIs to interact with the blockchain.
+This documentation provides an overview of the Blockchain project, which consists of three services running in Docker containers: Redis, API, and Worker. The project aims to simulate a simple blockchain system using Redis as the data store and provide an API for interacting with the blockchain.
 
-## Prerequisites
+## Services
 
-- Python 3.7+
-- FastAPI
-- Pydantic
-- Web3.py (Python library for interacting with Ethereum blockchain)
-- Redis (a fast in-memory data structure store used as a database)
+### 1. Redis
 
-## Setup
+**Description:** The Redis service runs the Redis server in a Docker container. Redis is used to store the blockchain data and provide persistence for the blockchain.
 
-1. Install Python: Ensure you have Python 3.7 or a higher version installed on your system.
+**Container Name:** redis
 
-2. Install FastAPI: Use pip to install FastAPI.
+**Image:** redis:latest
 
-```bash
-pip install fastapi
-```
+**Exposed Port:** 6379 (mapped to host port 6379)
 
-3. Install Pydantic: Pydantic is used for data validation and serialization.
+**Volume:** redis_data (used to persist Redis data)
 
-```bash
-pip install pydantic
-```
+**Restart Policy:** always (Redis container will automatically restart if it crashes)
 
-4. Install Web3.py: Web3.py is required to interact with the blockchain.
+### 2. API
 
-```bash
-pip install web3
-```
+**Description:** The API service runs the FastAPI application in a Docker container. The API serves as an interface to interact with the blockchain stored in Redis. It provides endpoints to create blocks, simulate user movement between zones, and retrieve blockchain information.
 
-5. Install Redis: Install Redis server or use a cloud service for Redis.
+**Container Name:** api
 
-## Application Overview
+**Build:** The API container is built using the Dockerfile located in the "./api" directory.
 
-The FastAPI application provides a blockchain-based user validation system. Users can be validated and added to the blockchain, and the blockchain will store the user validation data securely. Additionally, the application supports forging new blocks for user validation through API requests.
+**Exposed Port:** 8000 (mapped to host port 8000)
 
-### Data Model
+**Environment Variables:**
+- `REDIS_HOST`: Set to "redis" to indicate the Redis container as the host for the Redis server used by the API.
 
-The data model for user validation is represented by the `Block` class. Each block contains user validation information.
+**Restart Policy:** always (API container will automatically restart if it crashes)
 
-```python
-class Block:
-    def __init__(self, index, timestamp, data, previous_hash, nonce=0, hash=None):
-        self.index = index
-        self.timestamp = timestamp
-        self.data = data
-        self.previous_hash = previous_hash
-        self.nonce = 0
-        self.hash = self.calculate_hash() if hash is None else hash
+**Dependencies:**
+- The API service depends on the Redis service to be running before it starts.
 
-    def calculate_hash(self):
-        data_str = f"{self.index}{self.timestamp}{self.data}{self.previous_hash}{self.nonce}"
-        return hashlib.sha256(data_str.encode('utf-8')).hexdigest()
+### 3. Worker
 
-    def is_valid(self, difficulty):
-        target = "0" * difficulty
-        return self.hash[:difficulty] == target
-```
+**Description:** The Worker service runs the Python script `worker.py` in multiple Docker containers (specified by the `replicas` field). The Worker simulates the movement of users between zones in the blockchain and updates the blockchain stored in Redis accordingly.
 
-### Endpoints
+**Container Name:** worker
 
-The FastAPI application exposes the following endpoints:
+**Build:** The Worker container is built using the Dockerfile located in the "./worker" directory.
 
-1. **Forge New Block** - Forges a new block for user validation and stores it on the blockchain.
+**Environment Variables:**
+- `REDIS_HOST`: Set to "redis" to indicate the Redis container as the host for the Redis server used by the Worker.
+- `REFRESH_RATE`: Set to 1.0 (seconds) to define the time interval between blockchain updates.
 
-   **Endpoint:** `/forge`
+**Restart Policy:** always (Worker containers will automatically restart if they crash)
 
-   **HTTP Method:** POST
+**Dependencies:**
+- The Worker service depends on the Redis service to be running before it starts.
 
-   **Request Body:**
-
-   ```json
-   {
-       "person_id": "user123",
-       "authorization_id": "auth456",
-       "zone_id_orig": "zoneA",
-       "zone_id_dest": "zoneB"
-   }
-   ```
-
-   **Response:**
-
-   - `200 OK` with the response body containing a success message.
-
-2. **Get Blocks** - Retrieves all the blocks in the blockchain.
-
-   **Endpoint:** `/blocks`
-
-   **HTTP Method:** GET
-
-   **Response:**
-
-   - `200 OK` with the response body containing the list of blocks in the blockchain.
-
-## Blockchain Interaction
-
-The application uses Redis to store the blockchain data. The `Blockchain` class manages the blockchain and provides functions for adding blocks and validating the chain.
+**Deploy:**
+- The `replicas` field is set to 2, which means there will be two Worker containers running in parallel.
 
 ## Usage
 
-1. Ensure Redis server is running or use a cloud Redis service.
+1. Ensure that you have Docker installed and the Docker daemon is running.
 
-2. Run the FastAPI application.
-
-```bash
-uvicorn app:app --host 127.0.0.1 --port 8000
+2. Create a directory structure with the following layout:
+```
+project_directory/
+  |- api/
+  |    |- app.py
+  |    |- Dockerfile
+  |- worker/
+  |    |- worker.py
+  |    |- Dockerfile
+  |- docker-compose.yml
 ```
 
-3. The FastAPI application will now be running on `http://localhost:8000`.
+3. Place the `app.py` script in the "api" directory and the `worker.py` script in the "worker" directory.
 
-4. Use API clients like `curl`, `httpie`, or any other tool to interact with the API.
+4. Create the `docker-compose.yml` file with the provided configuration.
 
-## Security Considerations
+5. Navigate to the "project_directory" in your terminal or command prompt.
 
-1. Ensure that the Redis server is secure and properly configured.
+6. Run the following command to start the Redis, API, and Worker services:
 
-2. Implement authentication and authorization mechanisms to protect sensitive endpoints and operations.
+```bash
+docker-compose up -d
+```
 
-3. Use HTTPS to secure communication with the API.
+7. The Redis server, API, and Worker services will be running in separate Docker containers.
 
-## Conclusion
+## Notes
 
-This documentation provides an overview of the FastAPI application for blockchain-based user validation. By utilizing blockchain technology, the application ensures data integrity and transparency, making it suitable for various use cases that require secure and tamper-resistant validation. Ensure to follow the security considerations to maintain the robustness of the application.
+- The provided Docker Compose configuration sets up a simple simulation of a blockchain system using FastAPI, Redis, and Python. In a real-world scenario, you may need to consider additional security measures, load balancing, scaling, and other factors for a production-ready blockchain solution.
+
+- The Worker service simulates user movement and updates the blockchain periodically based on the `REFRESH_RATE` environment variable. The `REFRESH_RATE` value can be adjusted in the `docker-compose.yml` file to change the frequency of blockchain updates.
+
+- The provided API endpoints allow users to interact with the blockchain and simulate user movement. However, additional authentication and validation mechanisms should be implemented in a real-world application to ensure data integrity and security.
+
+- It is recommended to deploy the project in a secure and isolated environment, and configure any necessary firewall settings to restrict access to the services as needed.
+
+- The blockchain system in this project is for illustrative purposes only and may not be suitable for production use. For a robust and production-ready blockchain solution, consider using well-established blockchain frameworks and protocols.
+
+- For a more comprehensive API documentation, you can refer to the "Blockchain API Documentation" section provided earlier. This section explains the available API endpoints and their functionality.

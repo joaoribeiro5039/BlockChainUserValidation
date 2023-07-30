@@ -9,7 +9,6 @@ services:
       - redis_data:/data
     restart: always
 
-    
   api:
     container_name: api
     build:
@@ -30,10 +29,10 @@ services:
     restart: always
     environment:
       - REDIS_HOST=redis
+      - REFRESH_RATE=1.0
     depends_on:
       - redis
     deploy:
-      replicas: 1
-
+      replicas: 2
 volumes:
   redis_data:
