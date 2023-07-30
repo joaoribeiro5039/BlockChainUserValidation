@@ -34,5 +34,17 @@ services:
       - redis
     deploy:
       replicas: 2
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: always
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+      
 volumes:
   redis_data:
+  portainer_data:
