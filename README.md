@@ -2,6 +2,9 @@
 
 This documentation provides an overview of the Blockchain project, which consists of three services running in Docker containers: Redis, API, and Worker. The project aims to simulate a simple blockchain system using Redis as the data store and provide an API for interacting with the blockchain.
 
+![Image Alt Text](https://example.com/path/to/image.png)
+
+
 ## Services
 
 ### 1. Redis
